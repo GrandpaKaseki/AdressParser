@@ -2,6 +2,7 @@ import numpy as np
 from Levenshtein import distance
 from multiprocessing import Manager,Process
 
+# base of symbols to make vectors from words
 LETTERS = {'й': 0,
            'ц': 1,
            'у': 2,
@@ -104,6 +105,7 @@ class Parser:
         return np.sqrt(ro)
 
     def _find_probability(self, false_city: str, data_base: list | np.ndarray) -> dict:
+        "Looking fot k_similar neighbors for false_city in data_base. Using Levenshtein distance."
         proba_dict = {}
         num_elem = 0
         for city in data_base:
@@ -125,6 +127,7 @@ class Parser:
         return proba_dict
 
     def _find_city_proba(self, city: str) -> dict:
+        "Call _find_probabylity then for each finded elemet, calculate exp(-ro), where ro - metrcis in euclidian space."
         input_vector = self._make_vector_from_word(city)
         res_dict = self._find_probability(city, self.city_database)
         proba_dict = dict()
@@ -138,6 +141,7 @@ class Parser:
         return proba_dict
 
     def _find_street_proba(self, street: str, id:int=0, process_dict:dict=None) -> dict | None:
+        "Call _find_probabylity then for each finded elemet, calculate exp(-ro), where ro - metrcis in euclidian space."
         input_vector = self._make_vector_from_word(street)
         res_dict = self._find_probability(street, self.street_database)
         proba_dict = dict()
@@ -153,6 +157,7 @@ class Parser:
         else:
             process_dict[id] = proba_dict
     def _find_tokens(self, line: str) -> list:
+        "parse line to tokens. Delete all spec symbols exept '-'"
         max_ = 0
         sep = '12krol23'
         for curr_sep in self.spec_symbols:
@@ -177,6 +182,7 @@ class Parser:
         res_dict['index'] = "hasn't identified"
 
     def _find_city(self, tokens: list, res_dict: dict) -> None:
+        "Searching for most similar enter of tokens into city_database"
         key_words = self.city_key_words
         key_word_index = None
         for index, token in enumerate(tokens):
@@ -234,6 +240,7 @@ class Parser:
                 raise ValueError("Can't find city... Please check input string")
 
     def _find_street(self, tokens: list, res_dict: dict) -> None:
+        "Searching for most similar enter of tokens into street_database"
         key_words_short = self.street_key_words.keys()
         key_words_full = self.street_key_words.values()
         key_word_index = None
@@ -348,6 +355,12 @@ class Parser:
                     return
 
     def parse_line(self, address_str: str) -> dict:
+        """
+        Parsing line and returns dict with probability.Dict keys:('index','city','street','house') :arg address_str =
+        'улица Дворовая,123456;дом 30,Масква' :returns = {'index': 123456, 'city': {0.82: ['нижний новгород'],
+        0.15: ['великий новгород'], 0.03: ['сольвычегодск']}, 'street': {0.12: ['порядковая улица'],
+        0.88: ['родниковая улица']}, 'house': 6а}
+        """
         tokens = self._find_tokens(address_str)
 
         res_dict = {'index': None, 'city': None, 'street': None, 'house': None}
