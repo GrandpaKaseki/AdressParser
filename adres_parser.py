@@ -247,62 +247,48 @@ class Parser:
         for index, token in enumerate(tokens):
             if token in key_words_short:
                 key_word_index = index
-                street_class = self.street_key_words[token]
+                delete_word = token
                 break
             elif token in key_words_full:
                 key_word_index = index
-                street_class = token
+                delete_word = token
                 break
         if type(key_word_index) is int:
-            proc_arr = []
-            return_dict = {}
+            all_possibilities = []
+            tokens_for_delete = []
             for i in range(1,4):
                 if key_word_index + i < len(tokens):
                     street = ""
                     for j in range(1,i+1):
                         street += tokens[key_word_index+j] if len(street) == 1 else " "+tokens[key_word_index+j]
-                    street += " "+street_class
-                    self._find_street_proba(street,i,return_dict)
+
+                    for street_class in key_words_full:
+                        all_possibilities.append(self._find_street_proba(street+" "+street_class))
+                        tokens_for_delete.append(street.split(" "))
                 if key_word_index - i >= 0:
                     street = ""
                     for j in range(i,0,-1):
                         street += tokens[key_word_index-j] if len(street) == 1 else " "+tokens[key_word_index-j]
-                    street += " "+street_class
-                    self._find_street_proba(street,-i,return_dict)
 
+                    for street_class in key_words_full:
+                        all_possibilities.append(self._find_street_proba(street+" "+street_class))
+                        tokens_for_delete.append(street.split(" "))
 
-            max_ = 0
-            id = None
-            for i in range(1,4):
-                if key_word_index + i < len(tokens):
-                    try:
-                        if max(return_dict[i].keys()) > max_:
-                            max_ = max(return_dict[i].keys())
-                            id = i
-                    except KeyError:
-                        raise UserWarning("произошла ошибочка")
-                if key_word_index - i >= 0:
-                    try:
-                        if max(return_dict[-i].keys()) > max_:
-                            max_ = max(return_dict[-i].keys())
-                            id = -i
-                    except KeyError:
-                        raise UserWarning("произошла ошибочка")
+            _max = 0
+            index = None
+            for i, possibility in enumerate(all_possibilities):
+                if max(possibility.keys()) > _max:
+                    _max = max(possibility.keys())
+                    index = i
             final_dict = {}
-            for key in return_dict[id].keys():
-                final_dict[round(key/sum(return_dict[id].keys()),2)] = return_dict[id][key]
+            for key in all_possibilities[index].keys():
+                final_dict[round(key / sum(all_possibilities[index].keys()), 2)] = all_possibilities[index][key]
             res_dict['street'] = final_dict
-            delete_tokens = [tokens[key_word_index]]
-            if id > 0:
-                for j in range(1,id+1):
-                    delete_tokens.append(tokens[key_word_index+j])
-            else:
-                for j in range(-id,0,-1):
-                    delete_tokens.append(tokens[key_word_index-j])
-            for bad_token in delete_tokens:
-                tokens.remove(bad_token)
+            tokens.remove(delete_word)
+            for delete_token in tokens_for_delete[index]:
+                if delete_token != "":
+                    tokens.remove(delete_token.strip())
             return
-
         else:
             all_possibilities = []
             tokens_for_delete = []
