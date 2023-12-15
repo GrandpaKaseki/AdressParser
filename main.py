@@ -13,3 +13,6 @@ def main():
         for key in result.keys():
             print(f"{key}: {result[key]}")
         print('\n')
+
+if __name__ == '__main__':
+    main()

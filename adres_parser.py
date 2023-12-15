@@ -119,7 +119,7 @@ class Parser:
 
     def find_city_proba(self, city: str) -> dict:
         input_vector = self._make_vector_from_word(city)
-        res_dict = self._find_probability(city, self.city_database, 'Cities')
+        res_dict = self._find_probability(city, self.city_database)
         proba_dict = dict()
         for i in res_dict.keys():
             for word in res_dict[i]:
@@ -134,7 +134,7 @@ class Parser:
         return res_dict
 
     def find_street_proba(self, city: str) -> dict:
-        res_dict = self._find_probability(city, self.street_database, 'Streets')
+        res_dict = self._find_probability(city, self.street_database)
         prob_arr = []
         for i in res_dict.keys():
             prob_arr.append(np.exp(-i))
