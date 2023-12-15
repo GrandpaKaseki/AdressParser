@@ -1,6 +1,5 @@
 import numpy as np
 from Levenshtein import distance
-import pandas as pd
 
 LETTERS = {'й': 0,
            'ц': 1,
@@ -42,27 +41,46 @@ LETTERS = {'й': 0,
 
 class Parser:
 
-    def __init__(self, n_jobs: int = -1, separator: str | list = None):
-        self.city_database = pd.read_csv('cities_data.csv', sep=" ")
-        self.street_database = pd.read_csv('cities_data.csv', sep=" ")
-        self.n_jobs = -1
-        self.city_key_words = {'гор', 'город', 'поселок', 'пос', 'г'}
-        self.street_key_words = {'ул', 'улица', 'проспект', 'пр', 'шоссе'}
-        self.house_key_words = {'дом', 'д'}
+    def __init__(self, street_databse: list | np.ndarray = None,
+                 city_database: list | np.ndarray = None, city_key_words: list | set | np.ndarray = None,
+                 street_key_words: list | set | np.ndarray = None,
+                 house_key_words: list | set | np.ndarray = None, separators: set | list | np.ndarray = None,
+                 k_similar: int = 3):
+        if separators is None:
+            separators = {';', ':', ',', '.'}
+        if house_key_words is None:
+            house_key_words = {'дом', 'д'}
+        if street_key_words is None:
+            street_key_words = {'ул', 'улица', 'проспект', 'пр', 'шоссе'}
+        if city_key_words is None:
+            city_key_words = {'гор', 'город', 'поселок', 'пос', 'г'}
+        if street_databse is None:
+            raise ValueError("street_database parameter is None. Expected ndarray")
+        if city_database is None:
+            raise ValueError("city_database parameter is None. Expected ndarray")
+        self.knn = k_similar
+        self.city_database = street_databse
+        self.street_database = street_databse
+        self.city_key_words = city_key_words
+        self.street_key_words = street_key_words
+        self.house_key_words = house_key_words
         self.all_key_words = self.house_key_words.union(self.street_key_words).union(self.city_key_words)
-        spec_symbols = {';', ':', ',', '.'}
-        if separator:
-            if type(separator) == str:
-                spec_symbols.add(separator)
-            elif type(separator) == list or type(separator) == np.ndarray:
-                for sep in separator:
-                    if type(sep) == str:
-                        spec_symbols.add(sep)
-                    else:
-                        raise TypeError("Separator list must contains strings")
-            else:
-                raise TypeError('Separator must be string or list type.')
-        self.spec_symbols = spec_symbols
+        if type(separators) == set:
+            for sep in separators:
+                if type(sep) == str:
+                    continue
+                else:
+                    raise TypeError(f"Separator elements must be str type not {type(sep)}")
+            self.spec_symbols = separators
+        elif type(separators) == list or type(separators) == np.ndarray:
+            spec_symbols = set()
+            for sep in separators:
+                if type(sep) == str:
+                    spec_symbols.add(sep)
+                else:
+                    raise TypeError(f"Separator elements must be str type not {type(sep)}")
+        else:
+            raise TypeError(f"Expected seperator set or array-like, got {type(separators)} instead")
 
     def _make_vector_from_word(self, word: str) -> np.ndarray:
         word_vec = np.zeros(len(LETTERS))
@@ -78,13 +96,12 @@ class Parser:
             ro += (vec_a[i] - vec_b[i]) ** 2
         return np.sqrt(ro)
 
-    @staticmethod
-    def _find_probability(false_city: str, data_base: list, key: str) -> dict:
+    def _find_probability(self, false_city: str, data_base: list|np.ndarray) -> dict:
         proba_dict = {}
         num_elem = 0
-        for city in data_base[key]:
+        for city in data_base:
             city = city.lower().replace('�?', 'и')
-            dist = distance(false_city, city, weights=(2,2,1))
+            dist = distance(false_city, city, weights=(2, 2, 1))
             if dist == 0:
                 proba_dict[0] = [city]
                 return proba_dict
@@ -94,7 +111,7 @@ class Parser:
             else:
                 proba_dict[dist] = [city]
                 num_elem += 1
-            if num_elem > 3:
+            if num_elem > self.knn:
                 elem = proba_dict.pop(max(proba_dict.keys()))
                 num_elem -= len(elem)
 
@@ -216,16 +233,3 @@ class Parser:
                 tokens.remove(token)
         res_dict['street'] = tokens
         return res_dict
-
-
-def main():
-    par = Parser()
-    addresses = ['Нижний Новгород:ул.Дворовая,д. 30;123456', 'улица Дворовая,123456;дом 30,Масква',
-                 '123456;Ул. Дворовая;30;Москва', '123456;НижнийНовгород:ул.Дворовая,30',
-                 '123456;Нижний Новгород:Дворовая,30', 'г. Нижний Новгород, ул. Родниковая, 6а, 123456',
-                 'гор. НпжнийНовгород, Родниковая 6а, 123456']
-    for adr in addresses:
-        result = par.parse_line(adr)
-        for key in result.keys():
-            print(f"{key}: {result[key]}")
-        print('\n')
