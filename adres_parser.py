@@ -1,6 +1,6 @@
 import numpy as np
 from Levenshtein import distance
-from multiprocessing import Manager,Process
+from multiprocessing import Manager, Process
 
 # base of symbols to make vectors from words
 LETTERS = {'й': 0,
@@ -56,8 +56,8 @@ class Parser:
     def __init__(self, street_databse: list | np.ndarray = None,
                  city_database: list | np.ndarray = None,
                  city_key_words: list | set | np.ndarray = {'гор', 'город', 'поселок', 'пос', 'г'},
-                 street_key_words: dict = {'ул':'улица','пр':'проспект','ш':'шоссе', 'лин':'линия',
-                 'пер':'переулок','бул':'бульвар','мкр':'микрорайон'},
+                 street_key_words: dict = {'ул': 'улица', 'пр': 'проспект', 'ш': 'шоссе', 'лин': 'линия',
+                                           'пер': 'переулок', 'бул': 'бульвар', 'мкр': 'микрорайон'},
                  house_key_words: list | set | np.ndarray = {'дом', 'д'},
                  separators: set | list | np.ndarray = {';', ':', ',', '.'},
                  k_similar: int = 3) -> None:
@@ -72,7 +72,8 @@ class Parser:
         self.city_key_words = city_key_words
         self.street_key_words = street_key_words
         self.house_key_words = house_key_words
-        self.all_key_words = self.house_key_words.union(self.street_key_words).union(self.city_key_words).union(self.street_key_words.values())
+        self.all_key_words = self.house_key_words.union(self.street_key_words).union(self.city_key_words).union(
+            self.street_key_words.values())
         if type(separators) == set:
             for sep in separators:
                 if type(sep) == str:
@@ -140,7 +141,7 @@ class Parser:
                     proba_dict[metric_coef] = [word]
         return proba_dict
 
-    def _find_street_proba(self, street: str, id:int=0, process_dict:dict=None) -> dict | None:
+    def _find_street_proba(self, street: str, id: int = 0, process_dict: dict = None) -> dict | None:
         "Call _find_probabylity then for each finded elemet, calculate exp(-ro), where ro - metrcis in euclidian space."
         input_vector = self._make_vector_from_word(street)
         res_dict = self._find_probability(street, self.street_database)
@@ -156,6 +157,7 @@ class Parser:
             return proba_dict
         else:
             process_dict[id] = proba_dict
+
     def _find_tokens(self, line: str) -> list:
         "parse line to tokens. Delete all spec symbols exept '-'"
         max_ = 0
@@ -194,11 +196,11 @@ class Parser:
             try:
                 ret_dict_for_two = self._find_city_proba(tokens[key_word_index + 1] + " " + tokens[key_word_index + 2])
             except IndexError:
-                ret_dict_for_two = {0:0}
+                ret_dict_for_two = {0: 0}
             final_dict = {}
             if max(ret_dict_for_one.keys()) > max(ret_dict_for_two.keys()):
                 for key in ret_dict_for_one.keys():
-                    final_dict[round(key/sum(ret_dict_for_one.keys()),2)] = ret_dict_for_one[key]
+                    final_dict[round(key / sum(ret_dict_for_one.keys()), 2)] = ret_dict_for_one[key]
                 res_dict['city'] = final_dict
                 tokens.remove(tokens[key_word_index + 1])
                 return
@@ -231,7 +233,7 @@ class Parser:
             try:
                 final_dict = {}
                 for key in all_possibilities[index].keys():
-                    final_dict[round(key/sum(all_possibilities[index].keys()),2)] = all_possibilities[index][key]
+                    final_dict[round(key / sum(all_possibilities[index].keys()), 2)] = all_possibilities[index][key]
                 res_dict['city'] = final_dict
                 for delete_token in tokens_for_delete[index]:
                     tokens.remove(delete_token)
@@ -256,22 +258,22 @@ class Parser:
         if type(key_word_index) is int:
             all_possibilities = []
             tokens_for_delete = []
-            for i in range(1,4):
+            for i in range(1, 4):
                 if key_word_index + i < len(tokens):
                     street = ""
-                    for j in range(1,i+1):
-                        street += tokens[key_word_index+j] if len(street) == 1 else " "+tokens[key_word_index+j]
+                    for j in range(1, i + 1):
+                        street += tokens[key_word_index + j] if len(street) == 1 else " " + tokens[key_word_index + j]
 
                     for street_class in key_words_full:
-                        all_possibilities.append(self._find_street_proba(street+" "+street_class))
+                        all_possibilities.append(self._find_street_proba(street + " " + street_class))
                         tokens_for_delete.append(street.split(" "))
                 if key_word_index - i >= 0:
                     street = ""
-                    for j in range(i,0,-1):
-                        street += tokens[key_word_index-j] if len(street) == 1 else " "+tokens[key_word_index-j]
+                    for j in range(i, 0, -1):
+                        street += tokens[key_word_index - j] if len(street) == 1 else " " + tokens[key_word_index - j]
 
                     for street_class in key_words_full:
-                        all_possibilities.append(self._find_street_proba(street+" "+street_class))
+                        all_possibilities.append(self._find_street_proba(street + " " + street_class))
                         tokens_for_delete.append(street.split(" "))
 
             _max = 0
@@ -293,16 +295,21 @@ class Parser:
             all_possibilities = []
             tokens_for_delete = []
             for i in range(len(tokens)):
-                if tokens[i] in self.all_key_words and (tokens[i] not in key_words_short and tokens[i] not in key_words_full):
+                if tokens[i] in self.all_key_words and (
+                        tokens[i] not in key_words_short and tokens[i] not in key_words_full):
                     continue
                 for street_class in key_words_full:
                     all_possibilities.append(self._find_street_proba(tokens[i] + " " + street_class))
                     tokens_for_delete.append([tokens[i]])
             for i in range(1, len(tokens)):
-                if (tokens[i] in self.all_key_words and tokens[i] not in key_words_short and tokens[i] not in key_words_full) or (tokens[i - 1] in self.all_key_words and tokens[i-1] not in key_words_short and tokens[i-1] not in key_words_full):
+                if (tokens[i] in self.all_key_words and tokens[i] not in key_words_short and tokens[
+                    i] not in key_words_full) or (
+                        tokens[i - 1] in self.all_key_words and tokens[i - 1] not in key_words_short and tokens[
+                    i - 1] not in key_words_full):
                     continue
                 for street_class in key_words_full:
-                    all_possibilities.append(self._find_street_proba(tokens[i - 1] + " " + tokens[i] + " " + street_class))
+                    all_possibilities.append(
+                        self._find_street_proba(tokens[i - 1] + " " + tokens[i] + " " + street_class))
                     tokens_for_delete.append([tokens[i - 1], tokens[i]])
             for i in range(2, len(tokens)):
                 if (tokens[i] in self.all_key_words and tokens[i] not in key_words_short and tokens[
@@ -313,8 +320,9 @@ class Parser:
                     i - 2] not in key_words_full):
                     continue
                 for street_class in key_words_full:
-                    all_possibilities.append(self._find_street_proba(tokens[i-2]+" "+tokens[i - 1] + " " + tokens[i] + " " + street_class))
-                    tokens_for_delete.append([tokens[i-2],tokens[i - 1], tokens[i]])
+                    all_possibilities.append(self._find_street_proba(
+                        tokens[i - 2] + " " + tokens[i - 1] + " " + tokens[i] + " " + street_class))
+                    tokens_for_delete.append([tokens[i - 2], tokens[i - 1], tokens[i]])
             _max = 0
             index = None
             for i, possibility in enumerate(all_possibilities):
@@ -343,7 +351,7 @@ class Parser:
     def parse_line(self, address_str: str) -> dict:
         """
         Parsing line and returns dict with probability.Dict keys:('index','city','street','house') :arg address_str =
-        'улица Дворовая,123456;дом 30,Масква' :returns = {'index': 123456, 'city': {0.82: ['нижний новгород'],
+        'гор. НпжнийНовгород, Родниковая 6а, 123456' :returns = {'index': 123456, 'city': {0.82: ['нижний новгород'],
         0.15: ['великий новгород'], 0.03: ['сольвычегодск']}, 'street': {0.12: ['порядковая улица'],
         0.88: ['родниковая улица']}, 'house': 6а}
         """
